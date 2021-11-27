@@ -1,0 +1,74 @@
+# Merapihkan data
+data <- read.delim("clipboard", header = F,sep=",")
+data
+names(data) <- c("Id", "RI", "Na", "Mg", "Al", "Si", "K", "Ca", "Ba", "Fe", "Type")
+View(data)
+data <- data[2:10]
+data
+Type <- c(rep("building_windows_float_processed", 70), rep("building_windows_non_float_processed", 76),
+          rep("vehicle_windows_float_processed", 17), rep("containers", 13),
+          rep("tableware", 9), rep("headlamps",29))
+Type <-as.factor(Type)
+data <- data.frame(data,Type)
+data
+
+# Memanggil library nnet
+install.packages("nnet")
+library(nnet)
+
+sample <- c(sample(1:70,35), sample(71:146,38), sample(147:163,8), sample(164:176,7),
+            sample(177:185,5), sample(186:214,14))
+sample
+glass.train <- data[sample,]
+glass.test <- data[-sample,]
+glass.train
+glass.test
+
+glass <- nnet(Type~.,data=glass.train,size=10,decay=5e-4,maxit=200)
+glass
+
+y <- glass.test$Type
+y
+p <- predict(glass, glass.test, type ="class" )
+p
+tabelhasil <- table(y,p)
+tabelhasil
+
+sum(diag(table(y,p)))/107
+jumlaherror <-mean(y!=p) 
+jumlaherror
+
+library(devtools)
+library(reshape)
+source_url('https://gist.githubusercontent.com/fawda123/7471137/raw/466c1474d0a505ff044412703516c34f1a4684a5/nnet_plot_update.r')
+plot.nnet(glass)
+
+summary(glass)
+
+RI <- 1.5100
+Na <- 13.58
+Mg <- 3.5
+Al <- 1.35
+Si <- 71.23
+K <- 0.45
+Ca <- 7.73
+Ba <- 0
+Fe <- 0
+kacabaru <- data.frame(RI, Na, Mg, Al, Si, K, Ca, Ba, Fe)
+kacabaru
+cobaprediksi <- predict(glass, kacabaru)
+cobaprediksi
+
+# Mencoba Mencari Tahu Banyaknya Hiden Yang bagus
+errorklasifikasi <- function(jumlahhidden)
+{
+  glass<-nnet(Type~.,data = glass.train, size=jumlahhidden,
+              decay=5e-4, trace=F)
+  y<-glass.test$Type
+  p<-predict(glass, glass.test, type = "class")
+  err<-mean(y!=p)
+  c(jumlahhidden,err)
+}
+hasilakhir <- t(sapply(1:10, FUN = errorklasifikasi))
+plot(hasilakhir, type = "b", xlab = "jumlah hidden unit", ylab = "error",
+     main = "plot jumlah hidden unit vs error")
